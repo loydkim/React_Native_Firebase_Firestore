@@ -5,62 +5,95 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
+  TouchableOpacity,
   Text,
   useColorScheme,
+  ActivityIndicator,
+  Button,
   View,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
+import firestore from '@react-native-firebase/firestore';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+// init user collection
+const usersCollection = firestore().collection('Users');
 
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+type ItemData = {
+  id: string;
+  count: number;
+};
+
+type ItemProps = {
+  item: ItemData;
+};
+
+const Item = ({item}: ItemProps) => (
+  <TouchableOpacity
+    onPress={() => {
+      // Update data
+      usersCollection
+        .doc(item.id)
+        .update({
+          count: item.count + 1,
+        })
+        .then(() => console.debug('updated'));
+    }}
+    onLongPress={() => {
+      // Delete data
+      usersCollection
+        .doc(item.id)
+        .delete()
+        .then(() => {
+          console.debug('delete row');
+        });
+    }}
+    style={styles.item}>
+    <View style={{flexDirection: 'row'}}>
+      <Text style={styles.title}>Count: </Text>
+      <Text style={styles.title}>{item.count}</Text>
     </View>
-  );
-}
+  </TouchableOpacity>
+);
 
 function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<Array<ItemData>>();
 
+  const isDarkMode = useColorScheme() === 'dark';
   const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    backgroundColor: isDarkMode ? Colors.darker : Colors.white,
   };
+
+  // 1. Read data from firestore
+  useEffect(() => {
+    const subscriber = usersCollection.onSnapshot(querySnapshot => {
+      const queryUser: ItemData[] = [];
+      // Read Data
+      querySnapshot.forEach(documentSnapshot => {
+        // 2. Set each document to data list
+        queryUser.push({
+          id: documentSnapshot.id,
+          count: documentSnapshot.data()['count'],
+        });
+      });
+
+      // 3. update user data & hide loading
+      setUsers(queryUser);
+      setLoading(false);
+    });
+    return () => subscriber();
+  }, []);
+
+  if (loading) {
+    return <ActivityIndicator />;
+  }
 
   return (
     <SafeAreaView style={backgroundStyle}>
@@ -68,50 +101,38 @@ function App(): JSX.Element {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
+      <ScrollView>
+        {/* 4. show each document data in scrollview */}
+        {users?.map(value => (
+          <Item key={value.id.toString()} item={value} />
+        ))}
+        <Button
+          title="Add Data"
+          onPress={() => {
+            // Add Data
+            usersCollection
+              .add({
+                count: 0,
+              })
+              .then(() => {
+                console.debug('added data');
+              });
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  item: {
+    padding: 20,
+    marginVertical: 8,
+    marginHorizontal: 16,
+    backgroundColor: '#fff8b5',
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  title: {
+    fontSize: 32,
   },
 });
 
