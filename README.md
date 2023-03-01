@@ -4,6 +4,8 @@ If you buy me a coffee, I really appreciate it 🙇🏻‍♂️🙇🏻‍♂�
 
 Link: https://www.buymeacoffee.com/loydkim
 
+<img src="https://github.com/loydkim/React_Native_Firebase_Firestore/blob/main/short.gif" width="300" height="520">
+
 * Develop Environment.
 
 - OS Version: Mac Ventura 13.2
